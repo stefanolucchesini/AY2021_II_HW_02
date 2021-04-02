@@ -30,6 +30,7 @@
 <wrkspc_dependency project="GROUP_04.cydsn\GROUP_04.cyprj" dependency="..\..\..\Libraries\AnnotationLibrary\AnnotationLibrary_lib\AnnotationLibrary_lib.cylib\AnnotationLibrary_lib.cyprj" />
 <wrkspc_dependency project="GROUP_05.cydsn\GROUP_05.cyprj" dependency="..\..\..\Libraries\AnnotationLibrary\AnnotationLibrary_lib\AnnotationLibrary_lib.cylib\AnnotationLibrary_lib.cyprj" />
 <wrkspc_dependency project="GROUP_06.cydsn\GROUP_06.cyprj" dependency="..\..\..\Libraries\AnnotationLibrary\AnnotationLibrary_lib\AnnotationLibrary_lib.cylib\AnnotationLibrary_lib.cyprj" />
+<wrkspc_dependency project="GROUP_07.cydsn\GROUP_07.cyprj" dependency="..\..\PSoC libraries\AnnotationLibrary\AnnotationLibrary_lib\AnnotationLibrary_lib.cylib\AnnotationLibrary_lib.cyprj" />
 <wrkspc_dependency project="GROUP_07.cydsn\GROUP_07.cyprj" dependency="..\..\OneDrive - Politecnico di Milano\Esami da dare\LAB\SUPPORT_MATERIAL\PSoC\PSoC_AnnotationLibrary\AnnotationLibrary\AnnotationLibrary_lib\AnnotationLibrary_lib.cylib\AnnotationLibrary_lib.cyprj" />
 <wrkspc_dependency project="GROUP_08.cydsn\GROUP_08.cyprj" dependency="..\..\..\Libraries\AnnotationLibrary\AnnotationLibrary_lib\AnnotationLibrary_lib.cylib\AnnotationLibrary_lib.cyprj" />
 <wrkspc_dependency project="GROUP_09.cydsn\GROUP_09.cyprj" dependency="..\..\..\Libraries\AnnotationLibrary\AnnotationLibrary_lib\AnnotationLibrary_lib.cylib\AnnotationLibrary_lib.cyprj" />
