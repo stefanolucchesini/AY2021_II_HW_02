@@ -25,16 +25,19 @@ uint8_t state = IDLE;
 uint8_t timeout = 50;
 uint8_t datum_array[3];
 static char message[20] = {'\0'};
-
+volatile int newdatum = 0;  //flag
+volatile uint8_t received;  //datum received from UART
 
 int main(void)
 {
     CyGlobalIntEnable; /* Enable global interrupts. */
        UART_Start();
+       isr_UART_StartEx(Custom_UART_RX_ISR);
        RGBLed_Start();
-       RGBLed_WriteRed( 125 );
-       RGBLed_WriteGreen( 125 );
-       RGBLed_WriteBlue( 125 );
+       //Black color setup
+       RGBLed_WriteRed(0);
+       RGBLed_WriteGreen(0);
+       RGBLed_WriteBlue(0);
        Timer_1_Start();
        isr_timer_StartEx(Custom_ISR_timer);
     
@@ -42,14 +45,15 @@ int main(void)
     {
        switch(state){
        case IDLE:
-       while(UART_ReadRxStatus() == UART_RX_STS_FIFO_NOTEMPTY){
-          if( UART_ReadRxData() == 160 ) { 
-          sprintf(message, "Staus IDLE, Received: %c\r\n", 160);  //debug 
-          UART_PutString(message);
-          state = HDR_B_REC;
+       if(newdatum){
+        newdatum = 0;
+        if( received == 0xA0 ) { 
+        sprintf(message, "Staus IDLE, Received:%c\r\n", 160);  //debug 
+        UART_PutString(message);
+        state = HDR_B_REC;
         }
-        else if ( UART_ReadRxData() == 'v' ){
-        sprintf(message, "RGB LED Program $$$");  //debug 
+        else if ( received == 'v' ){
+        sprintf(message, "RGB LED Program $$$"); 
         UART_PutString(message);
         }
     }
@@ -57,48 +61,55 @@ int main(void)
     case HDR_B_REC:
     counter = 0;
     while(counter < timeout){
-        if(UART_ReadRxStatus() == UART_RX_STS_FIFO_NOTEMPTY){
-          datum_array[0] = UART_ReadRxData(); //RED Byte
-          sprintf(message, "Status: HDR_B_REC %d r\n", datum_array[0]);  //debug
+        if(newdatum){
+          newdatum = 0;
+          datum_array[0] = received; //RED Byte
+          sprintf(message, "Status: HDR_B_REC %dr\n", datum_array[0]);  //debug
           UART_PutString(message);
           state = R_B_REC;
           break;
         }
+        else state = IDLE;        
     }
-    state = IDLE;
     break;
         case R_B_REC:
     counter = 0;
     while(counter < timeout){
-       if(UART_ReadRxStatus() == UART_RX_STS_FIFO_NOTEMPTY){
-          datum_array[1] = UART_ReadRxData(); //Green Byte
+       if(newdatum){
+          newdatum = 0;
+          datum_array[1] = received; //Green Byte
           state = G_B_REC;
           break;
         }
+        else state = IDLE;
     }
-    state = IDLE;
+   
     break;
         case G_B_REC:
     counter = 0;
     while(counter < timeout){
-        if(UART_ReadRxStatus() == UART_RX_STS_FIFO_NOTEMPTY){
-          datum_array[2] = UART_ReadRxData(); //Blue Byte
+        if(newdatum){
+           newdatum = 0;
+          datum_array[2] = received; //Blue Byte
           state = B_B_REC;
           break;
         }
+        else state = IDLE;
     }
-    state = IDLE;
     break;
         case B_B_REC:
     counter = 0;
     while( counter < timeout){
-        if(UART_ReadRxStatus() == UART_RX_STS_FIFO_NOTEMPTY){
-          if( UART_ReadRxData() == 192) {//tail Byte
+        if(newdatum){
+           newdatum = 0;
+          if( received == 0xC0) {//tail Byte
           state = IDLE;
           RGBLed_WriteRed( datum_array[0] );
           RGBLed_WriteGreen( datum_array[1] );
-          RGBLed_WriteBlue( datum_array[2] );       
-          }  
+          RGBLed_WriteBlue( datum_array[2] ); 
+          break;
+          }
+          else state = IDLE;
         }
     }
     break;

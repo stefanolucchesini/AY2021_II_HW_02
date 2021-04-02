@@ -7,15 +7,23 @@
 //char datum_array[4] = {}; //non so come mettere tipologia stringa//
 
 volatile int counter;
-static char messaggio[20] = {'\0'};
+extern volatile int newdatum;
+extern volatile uint8_t received;
 
+CY_ISR(Custom_UART_RX_ISR)  //UART message handler
+{
+    
+        newdatum = 1;
+        received = UART_ReadRxData();
+    
+}
 
 CY_ISR(Custom_ISR_timer)  //timer overflow handler (useful for RX timeouts)
 {
     Timer_1_ReadStatusRegister();  //clears interrupt flag 
     counter++;
-    sprintf(messaggio, "Interrupt timer %d\n", counter);  //debug
-    UART_PutString(messaggio);
+    //sprintf(messaggio, "Interrupt timer %d\n", counter);  //debug
+    //UART_PutString(messaggio);
     
 }
 
