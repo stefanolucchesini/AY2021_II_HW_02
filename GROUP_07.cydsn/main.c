@@ -1,20 +1,10 @@
-/* ========================================
- *
- * Copyright YOUR COMPANY, THE YEAR
- * All Rights Reserved
- * UNPUBLISHED, LICENSED SOFTWARE.
- *
- * CONFIDENTIAL AND PROPRIETARY INFORMATION
- * WHICH IS THE PROPERTY OF your company.
- *
- * ========================================
-*/
+
 #include "RGBLedDriver.h"
 #include "InterruptRoutines.h"
 #include "project.h"
 #include "stdio.h"
 
-volatile int counter = 0;
+//States definitions
 #define IDLE 0
 #define HDR_B_REC 1
 #define R_B_REC 2
@@ -22,25 +12,26 @@ volatile int counter = 0;
 #define B_B_REC 4
 #define TIMER_SET 5
 
-uint8_t state = IDLE;
-uint8_t timeout = 50; //default value (5 seconds)
-uint8_t newtimeout;   
-uint8_t datum_array[3];   //contains RGB values
-static char message[20] = {'\0'};
+#define TIME_MARGIN 50  //adds five seconds more when changing by hand in case timeout value is too short
+#define TIMEOUT_SECONDS 5 //timeout value in seconds 
+
 volatile int newdatum = 0;  //flag
 volatile uint8_t received;  //datum received from UART
-int flag = 0;
+volatile int counter = 0;
 
 int main(void)
 {
-    CyGlobalIntEnable; /* Enable global interrupts. */
+       uint8_t state = IDLE;
+       uint8_t timeout = 10*TIMEOUT_SECONDS; // timeout/10 gives the number of seconds. This is the default value. Max timeout is 25 seconds
+       uint8_t newtimeout;   //stores new timeout value, if the tail is received it is assigned to timeout
+       uint8_t datum_array[3];   //contains RGB values
+       uint8_t flag = 0;   //useful to discriminate between timeout definition tail and RGB led tail
+       CyGlobalIntEnable; /* Enable global interrupts. */
        UART_Start();
        isr_UART_StartEx(Custom_UART_RX_ISR);
        RGBLed_Start();
-       //Black color setup
-       RGBLed_WriteRed(0);
-       RGBLed_WriteGreen(0);
-       RGBLed_WriteBlue(0);
+
+       RGBLed_WriteColor(0,0,0);  //Black color setup
        Timer_1_Start();
        isr_timer_StartEx(Custom_ISR_timer);
     
@@ -54,6 +45,7 @@ int main(void)
             state = HDR_B_REC;
         }
         else if ( received == 'v' ){
+            static char message[20] = {'\0'};
             sprintf(message, "RGB LED Program $$$"); 
             UART_PutString(message);
         }
@@ -62,7 +54,7 @@ int main(void)
         }
     }
        break;
-    case HDR_B_REC:
+    case HDR_B_REC:   //received header
     counter = 0;
     while(counter < timeout){
         if(newdatum){
@@ -74,7 +66,7 @@ int main(void)
         else state = IDLE;        
     }
     break;
-        case R_B_REC:
+        case R_B_REC:     //received red
     counter = 0;
     while(counter < timeout){
        if(newdatum){
@@ -87,7 +79,7 @@ int main(void)
     }
    
     break;
-        case G_B_REC:
+        case G_B_REC:   //received green
     counter = 0;
     while(counter < timeout){
         if(newdatum){
@@ -99,22 +91,20 @@ int main(void)
         else state = IDLE;
     }
     break;
-        case B_B_REC:
+        case B_B_REC:  //received blue
     counter = 0;
     while( counter < timeout){
         if(newdatum){
            newdatum = 0;
-          if(received == 0xC0 && flag == 1){
+          if(received == 0xC0 && flag == 1){  //it's the tail to change timeout value
             flag=0;
             timeout = newtimeout;
             state=IDLE;
             break;
         }
-          if( received == 0xC0) {//tail Byte
+          if( received == 0xC0) {     //tail Byte of RGB led
           state = IDLE;
-          RGBLed_WriteRed( datum_array[0] );
-          RGBLed_WriteGreen( datum_array[1] );
-          RGBLed_WriteBlue( datum_array[2] ); 
+          RGBLed_WriteColor(datum_array[0],datum_array[1],datum_array[2]); 
           break;
           }
           else state = IDLE;
@@ -123,7 +113,7 @@ int main(void)
     break;
     case TIMER_SET:
         counter = 0;
-        while(counter < (timeout+50)){ //added 50 in order to give enough time to change the timeout if it is too small from the previous setting
+        while(counter < (timeout+TIME_MARGIN)){ 
         if(newdatum){
            newdatum = 0;
            newtimeout = received*10;
