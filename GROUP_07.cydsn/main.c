@@ -12,17 +12,25 @@
 #define B_B_REC 4
 #define TIMER_SET 5
 
-#define TIME_MARGIN 50  //adds five seconds more when changing by hand in case timeout value is too short
+//Defines for timing
 #define TIMEOUT_SECONDS 5 //timeout value in seconds 
+#define TIME_MARGIN 5 //used when changing timeout value, adds 5 seconds to default timeout to have more time to change it manually
+#define MIN 1   //minimum allowed timeout value in seconds
+#define MAX 20  //maximum allowed timeout value in seconds
 
-volatile int newdatum = 0;  //flag
+//Defines for tail and headers 
+#define HEADER_LED 0xA0
+#define HEADER_TIMEOUT 0xA1
+#define TAIL 0xC0
+
+volatile int newdatum = 0;  //flag that tells if a new byte has arrived from UART
 volatile uint8_t received;  //datum received from UART
 volatile int counter = 0;
 
 int main(void)
 {
        uint8_t state = IDLE;
-       uint8_t timeout = 10*TIMEOUT_SECONDS; // timeout/10 gives the number of seconds. This is the default value. Max timeout is 25 seconds
+       uint8_t timeout = 10*TIMEOUT_SECONDS; // there is an interrupt fired by the timer every 100ms, so after 10 interrupts a second has passed
        uint8_t newtimeout;   //stores new timeout value, if the tail is received it is assigned to timeout
        uint8_t datum_array[3];   //contains RGB values
        uint8_t flag = 0;   //useful to discriminate between timeout definition tail and RGB led tail
@@ -38,10 +46,11 @@ int main(void)
     for(;;)
     {
        switch(state){
-       case IDLE:
+        
+    case IDLE:
        if(newdatum){
         newdatum = 0;
-        if( received == 0xA0 ) {          
+        if( received == HEADER_LED ) {          
             state = HDR_B_REC;
         }
         else if ( received == 'v' ){
@@ -49,11 +58,12 @@ int main(void)
             sprintf(message, "RGB LED Program $$$"); 
             UART_PutString(message);
         }
-        else if ( received == 0xA1){
+        else if ( received == HEADER_TIMEOUT){
             state = TIMER_SET;
         }
     }
-       break;
+    break;
+    
     case HDR_B_REC:   //received header
     counter = 0;
     while(counter < timeout){
@@ -66,7 +76,8 @@ int main(void)
         else state = IDLE;        
     }
     break;
-        case R_B_REC:     //received red
+    
+    case R_B_REC:     //received red
     counter = 0;
     while(counter < timeout){
        if(newdatum){
@@ -77,9 +88,9 @@ int main(void)
         }
         else state = IDLE;
     }
-   
     break;
-        case G_B_REC:   //received green
+    
+    case G_B_REC:   //received green
     counter = 0;
     while(counter < timeout){
         if(newdatum){
@@ -91,18 +102,19 @@ int main(void)
         else state = IDLE;
     }
     break;
-        case B_B_REC:  //received blue
+    
+    case B_B_REC:  //received blue
     counter = 0;
-    while( counter < timeout){
+    while(counter < timeout){
         if(newdatum){
            newdatum = 0;
-          if(received == 0xC0 && flag == 1){  //it's the tail to change timeout value
+          if(received == TAIL && flag == 1){  //it's the tail to change timeout value
             flag=0;
             timeout = newtimeout;
             state=IDLE;
             break;
         }
-          if( received == 0xC0) {     //tail Byte of RGB led
+          if( received == TAIL) {     //tail Byte of RGB led
           state = IDLE;
           RGBLed_WriteColor(datum_array[0],datum_array[1],datum_array[2]); 
           break;
@@ -111,11 +123,14 @@ int main(void)
         }
     }
     break;
+    
     case TIMER_SET:
         counter = 0;
-        while(counter < (timeout+TIME_MARGIN)){ 
+        while(counter < timeout+TIME_MARGIN*10){ 
         if(newdatum){
            newdatum = 0;
+           if(received<=MIN) received = MIN;  //minimum allowed timeout
+           if(received>=MAX) received = MAX;  //maximum allowed timeout
            newtimeout = received*10;
            flag=1;
            state=B_B_REC;
@@ -125,7 +140,7 @@ int main(void)
     
        }
     }
- }
+  }
 }
 
 /* [] END OF FILE */
